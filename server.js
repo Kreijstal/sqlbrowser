@@ -16,6 +16,84 @@ const swaggerOptions = {
     },
     servers: [{ url: 'http://localhost:3000' }],
     components: {
+      schemas: {
+        ApiInfo: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                type: { type: 'string' },
+                attributes: {
+                  type: 'object',
+                  properties: {
+                    api: { type: 'string' },
+                    version: { type: 'string' },
+                    database: { type: 'string' },
+                    endpoints: {
+                      type: 'object',
+                      properties: {
+                        tables: { type: 'string' },
+                        tableData: { type: 'string' }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        TableList: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  type: { type: 'string' },
+                  attributes: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        TableData: {
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: true
+              }
+            },
+            meta: {
+              type: 'object',
+              properties: {
+                tableName: { type: 'string' },
+                dbName: { type: 'string' },
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'integer' },
+                    limit: { type: 'integer' },
+                    total: { type: 'integer' },
+                    pages: { type: 'integer' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       responses: {
         JsonApiError: {
           description: 'Standard JSON:API error response',
@@ -217,9 +295,9 @@ async function startServer(dbUri, port = 3000) {
         });
       }
 
-      // Get total count for pagination metadata
+      // Get total count for pagination metadata (convert BigInt to number)
       const countResult = await conn.query(`SELECT COUNT(*) as total FROM \`${tableName}\``);
-      const total = countResult[0].total;
+      const total = Number(countResult[0].total.toString());
 
       let query = `SELECT * FROM \`${tableName}\``;
       let rows;
@@ -232,9 +310,18 @@ async function startServer(dbUri, port = 3000) {
         rows = await conn.query(query);
       }
 
-      // Convert rows to JSON:API format
+      // Process rows to handle BigInt values
+      const processedRows = rows.map(row => {
+        const processed = {};
+        for (const [key, value] of Object.entries(row)) {
+          processed[key] = typeof value === 'bigint' ? value.toString() : value;
+        }
+        return processed;
+      });
+
+      // Convert to JSON:API format
       const serializer = new Serializer(tableName, {
-        attributes: rows.length > 0 ? Object.keys(rows[0]) : [],
+        attributes: processedRows.length > 0 ? Object.keys(processedRows[0]) : [],
         keyForAttribute: 'camelCase',
         meta: {
           tableName,
@@ -248,7 +335,7 @@ async function startServer(dbUri, port = 3000) {
         }
       });
 
-      res.json(serializer.serialize(rows));
+      res.json(serializer.serialize(processedRows));
     } catch (err) {
       console.error(`Error fetching table ${tableName}:`, err);
       res.status(500).json({
