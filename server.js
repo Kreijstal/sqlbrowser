@@ -27,6 +27,19 @@ async function startServer(dbUri, port = 3000) {
 
   // --- API Routes ---
 
+  // GET /api - API root endpoint
+  app.get('/api', (req, res) => {
+    res.json({
+      api: 'SQL Browser REST API',
+      version: '1.0',
+      endpoints: {
+        tables: '/api/tables',
+        tableData: '/api/tables/:tableName'
+      },
+      database: dbName
+    });
+  });
+
   // GET /api/tables - List all tables
   app.get('/api/tables', async (req, res) => {
     let conn;
@@ -84,7 +97,11 @@ async function startServer(dbUri, port = 3000) {
 
   // --- Start Server ---
   app.listen(port, () => {
-    console.log(`🚀 REST API running at http://localhost:${port}/api`);
+    console.log(`🚀 REST API running at http://localhost:${port}`);
+    console.log('Available endpoints:');
+    console.log(`- GET /api - API information`);
+    console.log(`- GET /api/tables - List all tables`);
+    console.log(`- GET /api/tables/:tableName - Get table data`);
   });
 
   // Graceful shutdown
