@@ -1,0 +1,17 @@
+{
+  "name": "sqlbrowser",
+  "version": "0.0.1",
+  "description": "A web interface for browsing SQL databases",
+  "main": "server.js",
+  "scripts": {
+    "start": "node sql.js",
+    "dev": "nodemon sql.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mariadb": "^3.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
