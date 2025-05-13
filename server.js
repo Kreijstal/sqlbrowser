@@ -34,7 +34,7 @@ async function startServer(dbUri, port = 3000) {
       version: '1.0',
       endpoints: {
         tables: '/api/tables',
-        tableData: '/api/tables/:tableName'
+        tableData: '/api/tables/:tableName?page=1&limit=50'
       },
       database: dbName
     });
@@ -59,6 +59,7 @@ async function startServer(dbUri, port = 3000) {
   // GET /api/tables/:tableName - Get table data
   app.get('/api/tables/:tableName', async (req, res) => {
     const { tableName } = req.params;
+    const { page = 1, limit = 50 } = req.query;
     let conn;
     try {
       conn = await pool.getConnection();
@@ -74,7 +75,21 @@ async function startServer(dbUri, port = 3000) {
         });
       }
 
-      const rows = await conn.query(`SELECT * FROM \`${tableName}\` LIMIT 100`);
+      // Get total count for pagination metadata
+      const countResult = await conn.query(`SELECT COUNT(*) as total FROM \`${tableName}\``);
+      const total = countResult[0].total;
+
+      let query = `SELECT * FROM \`${tableName}\``;
+      let rows;
+      
+      if (limit !== 'all') {
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        query += ` LIMIT ${offset}, ${limit}`;
+        rows = await conn.query(query);
+      } else {
+        rows = await conn.query(query);
+      }
+
       const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
       
       res.json({
@@ -82,7 +97,13 @@ async function startServer(dbUri, port = 3000) {
         tableName,
         dbName,
         columns,
-        data: rows
+        data: rows,
+        pagination: {
+          page: parseInt(page),
+          limit: limit === 'all' ? total : parseInt(limit),
+          total,
+          pages: limit === 'all' ? 1 : Math.ceil(total / parseInt(limit))
+        }
       });
     } catch (err) {
       console.error(`Error fetching table ${tableName}:`, err);
@@ -101,7 +122,8 @@ async function startServer(dbUri, port = 3000) {
     console.log('Available endpoints:');
     console.log(`- GET /api - API information`);
     console.log(`- GET /api/tables - List all tables`);
-    console.log(`- GET /api/tables/:tableName - Get table data`);
+    console.log(`- GET /api/tables/:tableName - Get table data (paginated by default)`);
+    console.log(`  Parameters: page (default:1), limit (default:50 or 'all' for all records)`);
   });
 
   // Graceful shutdown
