@@ -1,7 +1,11 @@
 {
   "name": "sqlbrowser",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kreijstal/sqlbrowser"
+  },
   "version": "0.0.1",
-  "description": "A web interface for browsing SQL databases",
+  "description": "A REST API for browsing SQL databases",
   "main": "server.js",
   "scripts": {
     "start": "node sql.js",
