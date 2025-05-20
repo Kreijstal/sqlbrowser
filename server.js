@@ -167,7 +167,7 @@ async function startServer(dbUri, port = 3000) {
     process.exit(1);
   }
 
-  const app = express();
+  
   app.use(express.json());
   
   // Serve Swagger UI
