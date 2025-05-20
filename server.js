@@ -8,18 +8,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Handle 404 responses
-app.use((req, res) => {
-  res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval'");
-  res.status(404).json({
-    errors: [{
-      status: '404',
-      title: 'Not Found',
-      detail: 'Resource not found'
-    }]
-  });
-});
-
 
 const { parseMySqlUriAndCreatePool } = require('./mariadb');
 const { Serializer } = require('jsonapi-serializer');
