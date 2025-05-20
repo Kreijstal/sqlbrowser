@@ -1,5 +1,13 @@
 // server.js
 const express = require('express');
+const app = express();
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src *");
+  next();
+});
+
+
 const { parseMySqlUriAndCreatePool } = require('./mariadb');
 const { Serializer } = require('jsonapi-serializer');
 const swaggerJsdoc = require('swagger-jsdoc');
