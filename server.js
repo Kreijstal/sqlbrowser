@@ -2,9 +2,22 @@
 const express = require('express');
 const app = express();
 
+// CSP middleware - must come after express.json() but before routes
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src *");
+  res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval'");
   next();
+});
+
+// Handle 404 responses
+app.use((req, res) => {
+  res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval'");
+  res.status(404).json({
+    errors: [{
+      status: '404',
+      title: 'Not Found',
+      detail: 'Resource not found'
+    }]
+  });
 });
 
 
