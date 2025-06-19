@@ -38,7 +38,8 @@ const swaggerOptions = {
                       type: 'object',
                       properties: {
                         tables: { type: 'string' },
-                        tableData: { type: 'string' }
+                        tableData: { type: 'string' },
+                        query: { type: 'string' }
                       }
                     }
                   }
@@ -191,7 +192,7 @@ async function startServer(dbUri, port = 3000) {
     const serializer = new Serializer('api-info', {
       attributes: ['api', 'version', 'endpoints', 'database'],
       endpoints: {
-        attributes: ['tables', 'tableData']
+        attributes: ['tables', 'tableData', 'query']
       }
     });
 
@@ -201,7 +202,8 @@ async function startServer(dbUri, port = 3000) {
       version: '1.0',
       endpoints: {
         tables: '/api/tables',
-        tableData: '/api/tables/:tableName'
+        tableData: '/api/tables/:tableName',
+        query: '/api/query'
       },
       database: dbName
     }));
@@ -365,14 +367,97 @@ async function startServer(dbUri, port = 3000) {
     }
   });
 
+ /**
+  * @openapi
+  * /api/query:
+  *   post:
+  *     summary: Execute a raw SQL query
+  *     description: Executes a given SQL query string against the database.
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             type: object
+  *             properties:
+  *               query:
+  *                 type: string
+  *                 description: The SQL query to execute.
+  *             example:
+  *               query: "SELECT * FROM users LIMIT 10;"
+  *     responses:
+  *       200:
+  *         description: Query results
+  *         content:
+  *           application/vnd.api+json:
+  *             schema:
+  *               $ref: '#/components/schemas/TableData'
+  *       400:
+  *         $ref: '#/components/responses/JsonApiError'
+  *       500:
+  *         $ref: '#/components/responses/JsonApiError'
+  */
+ app.post('/api/query', async (req, res) => {
+   const { query } = req.body;
+
+   if (!query) {
+     return res.status(400).json({
+       errors: [{
+         status: '400',
+         title: 'Bad Request',
+         detail: 'Missing "query" in request body'
+       }]
+     });
+   }
+
+   let conn;
+   try {
+     conn = await pool.getConnection();
+     const rows = await conn.query(query);
+
+     // Process rows to handle BigInt values
+     const processedRows = rows.map(row => {
+       const processed = {};
+       for (const [key, value] of Object.entries(row)) {
+         processed[key] = typeof value === 'bigint' ? value.toString() : value;
+       }
+       return processed;
+     });
+
+     // Convert to JSON:API format
+     const serializer = new Serializer('query-result', {
+       attributes: processedRows.length > 0 ? Object.keys(processedRows[0]) : [],
+       keyForAttribute: 'camelCase',
+       meta: {
+         dbName,
+         query
+       }
+     });
+
+     res.json(serializer.serialize(processedRows));
+   } catch (err) {
+     console.error(`Error executing query:`, err);
+     res.status(500).json({
+       errors: [{
+         status: '500',
+         title: 'Database Error',
+         detail: err.message
+       }]
+     });
+   } finally {
+     if (conn) await conn.release();
+   }
+ });
+
   // --- Start Server ---
-  app.listen(port, () => {
+  app.listen(port,'127.0.0.2', () => {
     console.log(`🚀 JSON:API running at http://localhost:${port}`);
     console.log('Available endpoints:');
     console.log(`- GET /api - API information`);
     console.log(`- GET /api/tables - List all tables (JSON:API format)`);
     console.log(`- GET /api/tables/:tableName - Get table data (JSON:API format)`);
     console.log(`  Parameters: page (default:1), limit (default:50 or 'all' for all records)`);
+    console.log(`- POST /api/query - Execute a raw SQL query (JSON:API format)`);
     console.log(`- GET /api-docs - Interactive API documentation`);
   });
 
