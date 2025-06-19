@@ -2,17 +2,11 @@
 const express = require('express');
 const app = express();
 
-// CSP middleware - must come after express.json() but before routes
-app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval'");
-  next();
-});
-
-
 const { parseMySqlUriAndCreatePool } = require('./mariadb');
 const { Serializer } = require('jsonapi-serializer');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const cors = require('cors');
 
 // Swagger/OpenAPI configuration
 const swaggerOptions = {
@@ -157,6 +151,21 @@ async function startServer(dbUri, port = 3000) {
 
   
   app.use(express.json());
+  
+  // CORS middleware - enable cross-origin requests
+  app.use(cors({
+    origin: true, // Allow all origins for development
+    credentials: true
+  }));
+  
+  // CSP middleware - Allow everything explicitly
+  app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src * 'unsafe-inline' 'unsafe-eval'");
+    next();
+  });
+  
+  // Serve static files from client directory
+  app.use(express.static('client'));
   
   // Serve Swagger UI
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
