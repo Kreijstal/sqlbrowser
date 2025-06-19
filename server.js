@@ -17,7 +17,7 @@ const swaggerOptions = {
       version: '1.0.0',
       description: 'A JSON:API compliant interface for browsing SQL databases',
     },
-    servers: [{ url: 'http://localhost:3000' }],
+    servers: [{ url: 'http://127.0.0.2:3000' }],
     components: {
       schemas: {
         ApiInfo: {
@@ -451,7 +451,7 @@ async function startServer(dbUri, port = 3000) {
 
   // --- Start Server ---
   app.listen(port,'127.0.0.2', () => {
-    console.log(`🚀 JSON:API running at http://localhost:${port}`);
+    console.log(`🚀 JSON:API running at http://127.0.0.2:${port}`);
     console.log('Available endpoints:');
     console.log(`- GET /api - API information`);
     console.log(`- GET /api/tables - List all tables (JSON:API format)`);
